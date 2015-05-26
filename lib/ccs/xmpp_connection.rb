@@ -1,27 +1,54 @@
 module CCS
   class XMPPConnection < XMPPSimple::Api
     include Celluloid::IO
+    include Celluloid::Logger
 
-    def initialize(id, handler)
+    attr_reader :id, :sender_id, :api_key
+
+    def initialize(id:, handler:, sender_id:, api_key:)
       @id = id
       @state = :disconnected
       @draining = false
       @handler = handler
-      reset
+      @sender_id = sender_id
+      @api_key = api_key
 
+      reset
       XMPPSimple.logger = CCS.logger
       @xmpp_client = XMPPSimple::Client.new(Actor.current,
-                                            CCS.configuration.sender_id,
-                                            CCS.configuration.api_key,
+                                            sender_id,
+                                            api_key,
                                             CCS.configuration.host,
                                             CCS.configuration.port).connect
+    end
+
+    def upstream_queue
+      @upstream_queue ||= "#{sender_id}:#{UPSTREAM_QUEUE}"
+    end
+
+    def error_queue
+      @error_queue ||= "#{sender_id}:#{XMPP_ERROR_QUEUE}"
+    end
+
+    def receipt_queue
+      @receipt_queue ||= "#{sender_id}:#{RECEIPT_QUEUE}"
+    end  
+
+    def xmpp_queue
+      @xmpp_queue ||= "#{sender_id}:#{XMPP_QUEUE}"
+    end
+
+    def xmpp_connection_queue
+      @xmpp_connection_queue ||= "#{sender_id}:#{XMPP_QUEUE}:#{@id}"
     end
 
     def sender_loop
       redis = RedisHelper.connection(:celluloid)
       while @state == :connected && !@draining
         next unless @semaphore.take
-        msg_str = redis.brpoplpush(XMPP_QUEUE, "#{XMPP_QUEUE}_#{@id}")
+        info "waiting in ccs connection"
+        msg_str = redis.brpoplpush(xmpp_queue, xmpp_connection_queue)
+        debug "got message in ccs connection"
         msg = Oj.load(msg_str)
         send_stanza(msg)
         @send_messages[msg['message_id']] = msg_str
@@ -57,27 +84,31 @@ module CCS
       @send_messages = {}
       @semaphore = Semaphore.new(MAX_MESSAGES)
 
-      RedisHelper.merge_and_delete("#{XMPP_QUEUE}_#{@id}", XMPP_QUEUE)
+      RedisHelper.merge_and_delete(xmpp_connection_queue, xmpp_queue)
     end
 
+    # simple xmpp handler method
     def reconnecting
       CCS.debug('Reconnecting')
       @state = :reconnecting
       reset
     end
 
+    # simple xmpp handler method
     def connected
       CCS.debug('Connected')
       @state = :connected
       async.sender_loop
     end
 
+    # simple xmpp handler method
     def disconnected
       CCS.debug('Disconnected')
       @state = :disconnected
       @semaphore.interrupt
     end
 
+    # simple xmpp handler method
     def message(node)
       xml = Ox.parse(node)
       plain_content = xml.locate('gcm/^Text').first
@@ -92,7 +123,7 @@ module CCS
       when nil
         CCS.debug('Received upstream message')
         # upstream
-        RedisHelper.rpush(UPSTREAM_QUEUE, Oj.dump(content))
+        RedisHelper.rpush(upstream_queue, Oj.dump(content))
         ack(content)
       when 'ack'
         handle_ack(content)
@@ -111,7 +142,7 @@ module CCS
 
     def handle_receipt(content)
       CCS.debug("Delivery receipt received for: #{content['message_id']}")
-      RedisHelper.rpush(RECEIPT_QUEUE, Oj.dump(content))
+      RedisHelper.rpush(receipt_queue, Oj.dump(content))
       ack(content)
     end
 
@@ -121,7 +152,7 @@ module CCS
         CCS.info("Received ack for unknown message: #{content['message_id']}")
       else
         msg.delete('message_id')
-        if RedisHelper.lrem("#{XMPP_QUEUE}_#{@id}", -1, msg) < 1
+        if RedisHelper.lrem(xmpp_connection_queue, -1, msg) < 1
           CCS.debug("NOT FOUND: #{Oj.dump(msg)}")
         end
         @semaphore.release
@@ -134,11 +165,12 @@ module CCS
         CCS.info("Received nack for unknown message: #{content['message_id']}")
       else
         msg.delete('message_id')
-        RedisHelper.lrem("#{XMPP_QUEUE}_#{@id}", -1, msg)
-        RedisHelper.rpush(XMPP_ERROR_QUEUE, Oj.dump(msg))
+        RedisHelper.lrem(xmpp_connection_queue, -1, msg)
+        RedisHelper.rpush(error_queue, Oj.dump("message" => msg,  "error" => content['error']))
       end
     end
 
+    # the connection will be closed, drain it
     def handle_control(content)
       case content['control_type']
       when 'CONNECTION_DRAINING'

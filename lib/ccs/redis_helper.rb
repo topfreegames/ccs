@@ -10,6 +10,10 @@ module CCS
       redis.lrem(key, pos, value)
     end
 
+    def llen(key)
+      redis.llen(key)
+    end
+
     def sadd(key, value)
       redis.sadd(key, value)
     end

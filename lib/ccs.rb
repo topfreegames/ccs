@@ -18,7 +18,6 @@ require 'ccs/xmpp_connection'
 require 'ccs/http_worker'
 
 module CCS
-  attr_reader :callback
 
   XMPP_ERROR_QUEUE   = 'ccs_xmpp_error'
   XMPP_QUEUE         = 'ccs_xmpp_sending'
@@ -27,15 +26,18 @@ module CCS
 
   CONNECTIONS        = 'ccs_connections'
   MAX_MESSAGES       = 100
-  @callback          = {}
 
   module_function
 
   ## Main functions
-  def start
+
+  ## Start connection for single project
+  def start(api_key:, sender_id:, connection_count: 1)
     configuration.valid?
-    XMPPConnectionHandler.new(CCS.configuration.connection_count)
-    CallbackHandler.new
+    XMPPConnectionHandler.new(api_key: api_key, sender_id: sender_id, connection_count: connection_count)
+    callback_handler = CallbackHandler.new
+    yield callback_handler if block_given?
+    callback_handler
   end
 
   ## Configuration
@@ -52,7 +54,10 @@ module CCS
   end
 
   ## Logging
-  attr_writer :logger
+
+  def logger=(value)
+    @logger = value
+  end
 
   def logger
     @logger ||= Logger.new($stdout).tap do |logger|
@@ -86,49 +91,39 @@ module CCS
     end
   end
 
+    def xmpp_queue(sender_id)
+      @xmpp_queue ||= "#{sender_id}:#{RECEIPT_QUEUE}"
+    end
+
   ## CCS Api
-  def send(to, data = {}, options = {})
+  def send(sender_id, to, data = {}, options = {})
     msg = Notification.new(to, data, options)
     id = next_id
     msg.message_id = id
-    RedisHelper.lpush(XMPP_QUEUE, msg.to_json)
-    id
+    return send_notification(sender_id, msg)
   end
 
   ## GCM Api
-  def create(registration_ids, notification_key_name)
+  def create(sender_id, api_key, registration_ids, notification_key_name)
     fail 'name cannot be nil' if notification_key_name.nil?
     fail 'registration_ids must be an array' unless registration_ids.is_a? Array
-    notification_key('create', registration_ids, notification_key_name)
+    notification_key('create', sender_id, api_key, registration_ids, notification_key_name)
   end
 
-  def add(registration_ids, notification_key, notification_key_name = nil)
+  def add(sender_id, api_key, registration_ids, notification_key, notification_key_name = nil)
     fail 'key cannot be nil' if notification_key.nil?
     fail 'registration_ids must be an array' unless registration_ids.is_a? Array
-    notification_key('add', registration_ids, notification_key_name, notification_key)
+    notification_key('add', sender_id, api_key, registration_ids, notification_key_name, notification_key)
   end
 
-  def remove(registration_ids, notification_key, notification_key_name = nil)
+  def remove(sender_id, api_key, registration_ids, notification_key, notification_key_name = nil)
     fail 'key cannot be nil' if notification_key.nil?
     fail 'registration_ids must be an array' unless registration_ids.is_a? Array
-    notification_key('remove', registration_ids, notification_key_name, notification_key)
+    notification_key('remove', sender_id, api_key, registration_ids, notification_key_name, notification_key)
   end
 
-  def notification_key(operation, registration_ids, notification_key_name = nil, notification_key = nil)
+  def notification_key(operation, sender_id, api_key, registration_ids, notification_key_name = nil, notification_key = nil)
     msg = UserNotification.new(operation, registration_ids, notification_key_name, notification_key)
-    HTTPWorker.new.query msg
-  end
-
-  ## Access
-  def on_receipt(&block)
-    @callback[:receipt] = block
-  end
-
-  def on_error(&block)
-    @callback[:error] = block
-  end
-
-  def on_upstream(&block)
-    @callback[:upstream] = block
+    HTTPWorker.new.query(sender_id, api_key, msg)
   end
 end

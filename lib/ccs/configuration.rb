@@ -1,6 +1,6 @@
 module CCS
   class Configuration
-    attr_accessor :api_key, :sender_id, :host, :connection_count
+    attr_accessor :host
     attr_accessor :redis_host
     attr_reader :port, :redis_port
     attr_reader :default_time_to_live, :default_delay_while_idle, :default_delivery_receipt_requested
@@ -10,7 +10,6 @@ module CCS
       @port             = 5235
       @redis_host       = 'localhost'
       @redis_port       = 6379
-      @connection_count = 1
     end
 
     def port=(value)
@@ -40,7 +39,6 @@ module CCS
     end
 
     def valid?
-      fail 'credentials not set' if api_key.nil? || sender_id.nil?
       validate_redis
     end
 

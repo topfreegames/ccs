@@ -6,13 +6,13 @@ module CCS
   class HTTPWorker
     include Celluloid
 
-    def query(message)
+    def query(sender_id, api_key, message)
       path = path_for_operation(message.operation)
       return if path.nil?
       uri = URI.parse("https://android.googleapis.com/gcm#{path}")
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
-      response = http.post(uri.path, message.to_json, header)
+      response = http.post(uri.path, message.to_json, header(sender_id, api_key))
       CCS.debug "Response #{response.code} #{response.message}: #{response.body}"
       case response.code
       when '200'
@@ -37,10 +37,10 @@ module CCS
       end
     end
 
-    def header
+    def header(sender_id, api_key)
       {
-        'Authorization' => "key=#{CCS.configuration.api_key}",
-        'project_id'    => CCS.configuration.sender_id,
+        'Authorization' => "key=#{api_key}",
+        'project_id'    => sender_id,
         'Content-Type'  => 'application/json'
       }
     end
