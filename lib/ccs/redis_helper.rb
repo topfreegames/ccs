@@ -51,8 +51,7 @@ module CCS
     end
 
     def connection(driver = :hiredis)
-      Redis.new(host: CCS.configuration.redis_host,
-                port: CCS.configuration.redis_port,
+      Redis.new(url: CCS.configuration.redis_url,
                 driver: driver)
     end
 

@@ -1,27 +1,20 @@
 module CCS
   class Configuration
     attr_accessor :host
-    attr_accessor :redis_host
-    attr_reader :port, :redis_port
+    attr_accessor :redis_url
+    attr_reader :port
     attr_reader :default_time_to_live, :default_delay_while_idle, :default_delivery_receipt_requested
 
     def initialize
       @host             = 'gcm.googleapis.com'
       @port             = 5235
-      @redis_host       = 'localhost'
-      @redis_port       = 6379
+      @redis_url       = 'redis://localhost:6379'
     end
 
     def port=(value)
       fail 'must be a fixnum' unless value.class == Fixnum
       fail 'must be between 0 and 65535' unless value.between?(0, 65_535)
       @port = value
-    end
-
-    def redis_port=(value)
-      fail 'must be a fixnum' unless value.class == Fixnum
-      fail 'must be between 0 and 65535' unless value.between?(0, 65_535)
-      @redis_port = value
     end
 
     def default_time_to_live=(value)
