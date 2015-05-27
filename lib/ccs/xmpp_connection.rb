@@ -46,7 +46,7 @@ module CCS
       redis = RedisHelper.connection(:celluloid)
       while @state == :connected && !@draining
         next unless @semaphore.take
-        info "waiting in ccs connection"
+        debug "waiting in ccs connection"
         msg_str = redis.brpoplpush(xmpp_queue, xmpp_connection_queue)
         debug "got message in ccs connection"
         msg = Oj.load(msg_str)
