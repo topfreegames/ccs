@@ -1,5 +1,5 @@
 require 'net/https'
-require 'oj'
+require 'multi_json'
 require 'uri'
 
 module CCS
@@ -18,7 +18,7 @@ module CCS
       when '200'
         case (path)
         when '/notification'
-          return Oj.load(response.body)['notification_key']
+          return MultiJson.load(response.body)['notification_key']
         end
       when '401'
         CCS.error('HTTP Error: Authentication error')

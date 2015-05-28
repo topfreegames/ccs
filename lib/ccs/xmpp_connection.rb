@@ -49,7 +49,7 @@ module CCS
         debug "waiting in ccs connection"
         msg_str = redis.brpoplpush(xmpp_queue, xmpp_connection_queue)
         debug "got message in ccs connection"
-        msg = Oj.load(msg_str)
+        msg = MultiJson.load(msg_str)
         send_stanza(msg)
         @send_messages[msg['message_id']] = msg_str
       end
@@ -67,7 +67,7 @@ module CCS
     def send_stanza(content)
       msg  = '<message>'
       msg += '<gcm xmlns="google:mobile:data">'
-      msg += Oj.dump(content)
+      msg += MultiJson.dump(content)
       msg += '</gcm>'
       msg += '</message>'
       CCS.debug "Write: #{msg}"
@@ -112,7 +112,7 @@ module CCS
     def message(node)
       xml = Ox.parse(node)
       plain_content = xml.locate('gcm/^Text').first
-      content = Oj.load(plain_content)
+      content = MultiJson.load(plain_content)
       if xml['type'] == 'error'
         # Should not happen
       end
@@ -123,7 +123,7 @@ module CCS
       when nil
         CCS.debug('Received upstream message')
         # upstream
-        RedisHelper.rpush(upstream_queue, Oj.dump(content))
+        RedisHelper.rpush(upstream_queue, MultiJson.dump(content))
         ack(content)
       when 'ack'
         handle_ack(content)
@@ -142,7 +142,7 @@ module CCS
 
     def handle_receipt(content)
       CCS.debug("Delivery receipt received for: #{content['message_id']}")
-      RedisHelper.rpush(receipt_queue, Oj.dump(content))
+      RedisHelper.rpush(receipt_queue, MultiJson.dump(content))
       ack(content)
     end
 
@@ -153,7 +153,7 @@ module CCS
       else
         msg.delete('message_id')
         if RedisHelper.lrem(xmpp_connection_queue, -1, msg) < 1
-          CCS.debug("NOT FOUND: #{Oj.dump(msg)}")
+          CCS.debug("NOT FOUND: #{MultiJson.dump(msg)}")
         end
         @semaphore.release
       end
@@ -166,7 +166,7 @@ module CCS
       else
         msg.delete('message_id')
         RedisHelper.lrem(xmpp_connection_queue, -1, msg)
-        RedisHelper.rpush(error_queue, Oj.dump("message" => msg,  "error" => content['error']))
+        RedisHelper.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
       end
     end
 

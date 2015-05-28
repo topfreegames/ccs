@@ -27,7 +27,7 @@ module CCS
       msg['notification_key_name']      = notification_key_name    unless notification_key_name.nil?
       msg['notification_key']           = notification_key         unless notification_key.nil? || operation == 'create'
       msg['registration_ids']           = registration_ids
-      Oj.dump(msg)
+      MultiJson.dump(msg)
     end
   end
 end

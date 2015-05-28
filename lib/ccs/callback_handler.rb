@@ -33,7 +33,7 @@ module CCS
       loop do
         begin
           list, value = @redis.blpop(upstream_queue, error_queue, receipt_queue, 0)
-          msg = Oj.load(value)
+          msg = MultiJson.load(value)
           case list
           when upstream_queue
             handler.on_upstream(msg)
