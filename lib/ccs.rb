@@ -1,6 +1,6 @@
 require 'multi_json'
 require 'json'
-require 'ox'
+require 'nokogiri'
 require 'redis'
 require 'xmpp_simple'
 require 'celluloid'

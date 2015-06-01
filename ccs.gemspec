@@ -21,7 +21,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'celluloid-redis'
   spec.add_dependency 'hiredis'
   spec.add_dependency 'redis'
-  spec.add_dependency 'ox'
+  spec.add_dependency 'nokogiri'
   spec.add_dependency 'multi_json'
 
   spec.add_development_dependency 'bundler'

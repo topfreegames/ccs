@@ -110,8 +110,10 @@ module CCS
 
     # simple xmpp handler method
     def message(node)
-      xml = Ox.parse(node)
-      plain_content = xml.locate('gcm/^Text').first
+
+      xml = Nokogiri::XML(node)
+      xml.remove_namespaces!
+      plain_content = xml.at_xpath('//message//gcm/text()').text
       content = MultiJson.load(plain_content)
       if xml['type'] == 'error'
         # Should not happen
