@@ -4,10 +4,10 @@ module CCS
 
     attr_reader :callback, :sender_id
 
-    def initialize(sender_id:, handler_name:)
-      @sender_id = sender_id
+    def initialize(params={})
+      @sender_id = params[:sender_id]
       @redis = RedisHelper.connection(:celluloid)
-      @handler_name = handler_name
+      @handler_name = params[:handler_name]
       @callback = {}
       async.run
     end

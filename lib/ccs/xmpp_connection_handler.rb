@@ -5,19 +5,19 @@ module CCS
 
     attr_reader :connection_count, :sender_id, :api_key
 
-    def initialize(api_key: api_key, sender_id: sender_id, connection_count: connection_count)      
-      return if connection_count <= 0
+    def initialize(params={})      
+      return if params[:connection_count] <= 0
 
-      @connection_count = connection_count
-      @sender_id = sender_id
-      @api_key = api_key
+      @connection_count = params[:connection_count]
+      @sender_id = params[:sender_id]
+      @api_key = params[:api_key]
 
       requeue
-      @supervisor = XMPPConnection.supervise(id: next_connection_number, handler: self, sender_id: sender_id, api_key: api_key)
-      (connection_count - 1).times do
+      @supervisor = XMPPConnection.supervise(id: next_connection_number, handler: self, sender_id: @sender_id, api_key: @api_key)
+      (@connection_count - 1).times do
         add_connection
       end
-      debug "Initialized connection handler for #{sender_id}"
+      debug "Initialized connection handler for #{@sender_id}"
     end
 
     def queue_size

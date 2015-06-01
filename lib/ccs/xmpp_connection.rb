@@ -5,19 +5,19 @@ module CCS
 
     attr_reader :id, :sender_id, :api_key
 
-    def initialize(id:, handler:, sender_id:, api_key:)
-      @id = id
+    def initialize(params={})
+      @id = params[:id]
       @state = :disconnected
       @draining = false
-      @handler = handler
-      @sender_id = sender_id
-      @api_key = api_key
+      @handler = params[:handler]
+      @sender_id = params[:sender_id]
+      @api_key = params[:api_key]
 
       reset
       XMPPSimple.logger = CCS.logger
       @xmpp_client = XMPPSimple::Client.new(Actor.current,
-                                            sender_id,
-                                            api_key,
+                                            @sender_id,
+                                            @api_key,
                                             CCS.configuration.host,
                                             CCS.configuration.port).connect
     end

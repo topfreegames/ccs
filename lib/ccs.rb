@@ -32,7 +32,10 @@ module CCS
   ## Main functions
 
   ## Start connection for single project
-  def start(api_key:, sender_id:, connection_count: 1)
+  def start(params={})
+    api_key = params[:api_key]
+    sender_id = params[:sender_id]
+    connection_count = params[:connection_count] || 1
     configuration.valid?
     XMPPConnectionHandler.new(api_key: api_key, sender_id: sender_id, connection_count: connection_count)
     callback_handler = CallbackHandler.new
