@@ -7,14 +7,15 @@ module CCS
 
     def initialize(params={})      
       return if params[:connection_count] <= 0
-
+      
+      @handler_name = params[:handler_name]
       @connection_count = params[:connection_count]
       @sender_id = params[:sender_id]
       @api_key = params[:api_key]
 
-      requeue
-      @supervisor = XMPPConnection.supervise(id: next_connection_number, handler: self, sender_id: @sender_id, api_key: @api_key)
-      (@connection_count - 1).times do
+      Actor[@handler_name] = Actor.current
+
+      (@connection_count).times do
         add_connection
       end
       debug "Initialized connection handler for #{@sender_id}"
@@ -35,19 +36,25 @@ module CCS
     end
 
     def xmpp_connection_queue(connection_id)
-      @xmpp_connection_queue ||= "#{sender_id}:#{XMPP_QUEUE}:#{connection_id}"
+      "#{sender_id}:#{XMPP_QUEUE}:#{connection_id}"
     end
 
     def connections_set_key
       @connections_set_key ||= "#{sender_id}:#{CONNECTIONS}"
     end
 
-    def drain
-      add_connection
+    def terminate_child(id)
+      debug "Terminate drained actor (#{xmpp_connection_queue(id)})"
+      Actor[xmpp_connection_queue(id)].terminate
+      requeue(id)
     end
 
     def add_connection
-      @supervisor.add(XMPPConnection, args: [{id: next_connection_number, handler: self, sender_id: sender_id, api_key: api_key}])
+      if !@supervisor
+        @supervisor = XMPPConnection.supervise(id: next_connection_number, handler: @handler_name, sender_id: @sender_id, api_key: @api_key)
+      else
+        XMPPConnection.supervise(id: next_connection_number, handler: @handler_name, sender_id: @sender_id, api_key: @api_key)
+      end
     end
 
     def remove_connection(id)
@@ -63,12 +70,10 @@ module CCS
 
     private
 
-    def requeue
-      prev = RedisHelper.smembers(connections_set_key)
-      prev.each do |n|
-        RedisHelper.merge_and_delete(xmpp_connection_queue(n), xmpp_queue)
-      end
-      RedisHelper.del(connections_set_key)
+    def requeue(id)
+      RedisHelper.merge_and_delete(xmpp_connection_queue(id), xmpp_queue)
+      RedisHelper.srem(connections_set_key, id)
+      RedisHelper.del(connections_set_key) if RedisHelper.smembers(connections_set_key).empty?
     end
   end
 end

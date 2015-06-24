@@ -2,13 +2,15 @@ module CCS
   class Configuration
     attr_accessor :host
     attr_accessor :redis_url
+    attr_reader :drain_timeout
     attr_reader :port
     attr_reader :default_time_to_live, :default_delay_while_idle, :default_delivery_receipt_requested
 
     def initialize
       @host             = 'gcm.googleapis.com'
       @port             = 5235
-      @redis_url       = 'redis://localhost:6379'
+      @redis_url        = 'redis://localhost:6379'
+      @drain_timeout    = 5
     end
 
     def port=(value)
@@ -33,6 +35,11 @@ module CCS
 
     def valid?
       validate_redis
+    end
+
+    def drain_timeout=(value)
+      fail 'must be a fixnum' unless value.class == Fixnum
+      @drain_timeout = value
     end
 
     private

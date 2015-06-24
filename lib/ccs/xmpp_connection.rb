@@ -6,12 +6,14 @@ module CCS
     attr_reader :id, :sender_id, :api_key
 
     def initialize(params={})
-      @id = params[:id]
       @state = :disconnected
       @draining = false
       @handler = params[:handler]
       @sender_id = params[:sender_id]
       @api_key = params[:api_key]
+      @id = params[:id]
+
+      Actor[xmpp_connection_queue] = Actor.current
 
       reset
       XMPPSimple.logger = CCS.logger
@@ -23,23 +25,23 @@ module CCS
     end
 
     def upstream_queue
-      @upstream_queue ||= "#{sender_id}:#{UPSTREAM_QUEUE}"
+      @upstream_queue ||= "#{@sender_id}:#{UPSTREAM_QUEUE}"
     end
 
     def error_queue
-      @error_queue ||= "#{sender_id}:#{XMPP_ERROR_QUEUE}"
+      @error_queue ||= "#{@sender_id}:#{XMPP_ERROR_QUEUE}"
     end
 
     def receipt_queue
-      @receipt_queue ||= "#{sender_id}:#{RECEIPT_QUEUE}"
+      @receipt_queue ||= "#{@sender_id}:#{RECEIPT_QUEUE}"
     end  
 
     def xmpp_queue
-      @xmpp_queue ||= "#{sender_id}:#{XMPP_QUEUE}"
+      @xmpp_queue ||= "#{@sender_id}:#{XMPP_QUEUE}"
     end
 
     def xmpp_connection_queue
-      @xmpp_connection_queue ||= "#{sender_id}:#{XMPP_QUEUE}:#{@id}"
+      @xmpp_connection_queue ||= "#{@sender_id}:#{XMPP_QUEUE}:#{@id}"
     end
 
     def sender_loop
@@ -75,8 +77,9 @@ module CCS
     end
 
     def drain
-      @handler.drain
       @draining = true
+      wait_responses{ Actor[@handler].async.terminate_child(id) }
+      Actor[@handler].async.add_connection
       @semaphore.interrupt
     end
 
@@ -141,6 +144,17 @@ module CCS
     end
 
     private
+
+    def wait_responses(limit_s=CCS.configuration.drain_timeout)
+      debug "Wait #{limit_s} seconds until releasing #{@handler} (waiting for #{@send_messages.size} messages)"
+      every(1) do
+        if limit_s <= 0 || @send_messages.empty?
+          yield if block_given?
+        else
+          limit_s -= 1
+        end
+      end
+    end
 
     def handle_receipt(content)
       CCS.debug("Delivery receipt received for: #{content['message_id']}")
