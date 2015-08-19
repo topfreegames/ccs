@@ -18,7 +18,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ['lib']
 
-  spec.add_dependency 'celluloid', '~> 0.17.1'
+  spec.add_dependency 'celluloid'
   spec.add_dependency 'celluloid-redis'
   spec.add_dependency 'hiredis'
   spec.add_dependency 'redis'

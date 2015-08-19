@@ -3,7 +3,7 @@ require 'json'
 require 'ox'
 require 'redis'
 require 'xmpp_simple'
-require 'celluloid/current'
+require 'celluloid'
 require 'celluloid/redis'
 
 require 'ccs/version'
