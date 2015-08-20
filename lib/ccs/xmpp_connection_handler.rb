@@ -51,9 +51,9 @@ module CCS
 
     def add_connection
       if !@supervisor
-        @supervisor = XMPPConnection.supervise(id: next_connection_number, handler: @handler_name, sender_id: @sender_id, api_key: @api_key)
+        @supervisor = XMPPConnection.supervise(args: [{id: next_connection_number, handler: @handler_name, sender_id: @sender_id, api_key: @api_key}])
       else
-        XMPPConnection.supervise(id: next_connection_number, handler: @handler_name, sender_id: @sender_id, api_key: @api_key)
+        @supervisor.add(XMPPConnection, args: [{id: next_connection_number, handler: @handler_name, sender_id: @sender_id, api_key: @api_key}])
       end
     end
 
