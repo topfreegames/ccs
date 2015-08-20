@@ -3,14 +3,18 @@ module CCS
     attr_accessor :host
     attr_accessor :redis_url
     attr_reader :drain_timeout
+    attr_reader :queue_ttl
+    attr_reader :queue_ttl_interval
     attr_reader :port
     attr_reader :default_time_to_live, :default_delay_while_idle, :default_delivery_receipt_requested
 
     def initialize
-      @host             = 'gcm.googleapis.com'
-      @port             = 5235
-      @redis_url        = 'redis://localhost:6379'
-      @drain_timeout    = 5
+      @host               = 'gcm.googleapis.com'
+      @port               = 5235
+      @redis_url          = 'redis://localhost:6379'
+      @drain_timeout      = 5
+      @queue_ttl          = 600  # 10 mins
+      @queue_ttl_interval = 420  # 7 mins
     end
 
     def port=(value)
@@ -40,6 +44,16 @@ module CCS
     def drain_timeout=(value)
       fail 'must be a fixnum' unless value.class == Fixnum
       @drain_timeout = value
+    end
+
+    def queue_ttl=(value)
+      fail 'must be a fixnum' unless value.class == Fixnum
+      @queue_ttl = value
+    end
+
+    def queue_ttl_interval
+      fail 'must be a fixnum' unless value.class == Fixnum
+      @queue_ttl_interval = value
     end
 
     private

@@ -17,11 +17,8 @@ module CCS
 
       reset
       XMPPSimple.logger = CCS.logger
-      @xmpp_client = XMPPSimple::Client.new(Actor.current,
-                                            @sender_id,
-                                            @api_key,
-                                            CCS.configuration.host,
-                                            CCS.configuration.port).connect
+      @xmpp_client = XMPPSimple::Client.new(Actor.current, @sender_id, @api_key, CCS.configuration.host, CCS.configuration.port).connect
+      monitor_queue_ttl
     end
 
     def upstream_queue
@@ -42,6 +39,31 @@ module CCS
 
     def xmpp_connection_queue
       @xmpp_connection_queue ||= "#{@sender_id}:#{XMPP_QUEUE}:#{@id}"
+    end
+
+    # If a queue is live for more than 70 minutes it should be drained (GCM soudld do this before 70 mins)
+    def monitor_queue_ttl 
+      debug "Monitor queue #{id} each #{CCS.configuration.queue_ttl_interval} seconds. If no key found on redis, drain!"
+      queue_ttl          = CCS.configuration.queue_ttl
+      queue_ttl_interval = CCS.configuration.queue_ttl_interval
+
+      RedisHelper.expire(id, queue_ttl)
+      every(queue_ttl_interval) do
+        break if @draining
+
+        curr_ttl = RedisHelper.ttl(id)
+        case curr_ttl
+          when -1  
+            warn "No ttl found for connection #{id}. Defining it as #{queue_ttl} seconds"
+            RedisHelper.expire(id, queue_ttl)
+          when -2 
+            error "Connection #{id} has no active redis key. Drain!"
+            drain 
+          else
+            RedisHelper.expire(id, queue_ttl)
+          end
+        end
+      end
     end
 
     def sender_loop
@@ -190,7 +212,7 @@ module CCS
     def handle_control(content)
       case content['control_type']
       when 'CONNECTION_DRAINING'
-        drain
+        drain unless @draining
       else
         CCS.info("Received unknown control type: #{content['control_type']}")
       end

@@ -22,6 +22,10 @@ module CCS
       redis.smembers(key)
     end
 
+    def exists(key)
+      redis.exists(key)
+    end
+
     def lrange(key, a, b)
       redis.lrange(key, a, b)
     end
@@ -40,6 +44,14 @@ module CCS
 
     def ping
       redis.ping
+    end
+
+    def ttl(key)
+      redis.ttl(key)
+    end
+
+    def expire(key, seconds)
+      redis.expire(key, seconds)
     end
 
     def merge_and_delete(source, destination)
