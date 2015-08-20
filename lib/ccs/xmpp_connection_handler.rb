@@ -15,10 +15,11 @@ module CCS
 
       Actor[@handler_name] = Actor.current
 
+      CCS.debug "Create #{@connection_count} connections"
       (@connection_count).times do
         add_connection
       end
-      debug "Initialized connection handler for #{sender_id}"
+      CCS.debug "Initialized connection handler for #{@sender_id}"
     end
 
     def queue_size
@@ -31,34 +32,41 @@ module CCS
     end
 
     def xmpp_queue
-      @xmpp_queue ||= "#{sender_id}:#{XMPP_QUEUE}"
+      @xmpp_queue ||= "#{@sender_id}:#{XMPP_QUEUE}"
     end
 
     def xmpp_connection_queue(connection_id)
-      "#{sender_id}:#{XMPP_QUEUE}:#{connection_id}"
+      "#{@sender_id}:#{XMPP_QUEUE}:#{connection_id}"
     end
 
     def terminate_child(id)
-      debug "Terminate drained actor (#{xmpp_connection_queue(id)})"
+      CCS.debug "Terminate drained actor (#{xmpp_connection_queue(id)})"
       Actor[xmpp_connection_queue(id)].terminate
       requeue(id)
     end
 
     def add_connection
       connection_n = next_connection_number 
-      return if connection_n.nil?
-
-      if !@supervisor
-        @supervisor = XMPPConnection.supervise(args: [{id: connection_n, handler: @handler_name, sender_id: sender_id, api_key: @api_key}])
-      else
-        @supervisor.add(XMPPConnection, args: [{id: connection_n, handler: @handler_name, sender_id: sender_id, api_key: @api_key}])
+      if connection_n.nil?
+        CCS.info "no available connection to send ccs messages!"
+        return
       end
+
+      CCS.debug({id: connection_n, handler: @handler_name, sender_id: @sender_id, api_key: @api_key})
+      if !@supervisor
+        @supervisor = XMPPConnection.supervise({id: connection_n, handler: @handler_name, sender_id: @sender_id, api_key: @api_key})
+      else
+        @supervisor.add(XMPPConnection, args: [{id: connection_n, handler: @handler_name, sender_id: @sender_id, api_key: @api_key}])
+      end
+
+      CCS.debug "Connection created for CCS! (connection_id=#{connection_n})"
     end
 
     def next_connection_number
       (1..1000).each do |n|
-        return n if RedisHelper.exists(xmpp_connection_queue(n)) == 0
+        return n if !RedisHelper.exists(xmpp_connection_queue(n))
       end
+      nil
     end
 
     private

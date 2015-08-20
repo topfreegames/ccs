@@ -2,9 +2,9 @@ module CCS
   class Configuration
     attr_accessor :host
     attr_accessor :redis_url
-    attr_reader :drain_timeout
-    attr_reader :queue_ttl
-    attr_reader :queue_ttl_interval
+    attr_reader :default_drain_timeout
+    attr_reader :default_queue_ttl
+    attr_reader :default_queue_ttl_interval
     attr_reader :port
     attr_reader :default_time_to_live, :default_delay_while_idle, :default_delivery_receipt_requested
 
@@ -15,6 +15,12 @@ module CCS
       @drain_timeout      = 5
       @queue_ttl          = 600  # 10 mins
       @queue_ttl_interval = 420  # 7 mins
+      @default_time_to_live = 0
+      @default_delay_while_idle = false
+      @default_delivery_receipt_requested = false
+      @default_queue_ttl_interval = 60
+      @default_queue_ttl          = 600
+      @default_drain_timeout      = 10
     end
 
     def port=(value)
@@ -41,19 +47,18 @@ module CCS
       validate_redis
     end
 
-    def drain_timeout=(value)
+    def default_drain_timeout=(value)
       fail 'must be a fixnum' unless value.class == Fixnum
-      @drain_timeout = value
+      @default_drain_timeout = value
+    end
+    def default_queue_ttl=(value)
+      fail 'must be a fixnum' unless value.class == Fixnum
+      @default_queue_ttl = value
     end
 
-    def queue_ttl=(value)
+    def default_queue_ttl_interval=(value)
       fail 'must be a fixnum' unless value.class == Fixnum
-      @queue_ttl = value
-    end
-
-    def queue_ttl_interval
-      fail 'must be a fixnum' unless value.class == Fixnum
-      @queue_ttl_interval = value
+      @default_queue_ttl_interval = value
     end
 
     private

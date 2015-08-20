@@ -6,6 +6,10 @@ module CCS
     attr_reader :id, :sender_id, :api_key
 
     def initialize(params={})
+      CCS.debug(params)
+      CCS.debug(CCS.configuration.host)
+      CCS.debug(CCS.configuration.port)
+      
       @state = :disconnected
       @draining = false
       @handler = params[:handler]
@@ -43,9 +47,9 @@ module CCS
 
     # If a queue is live for more than 70 minutes it should be drained (GCM soudld do this before 70 mins)
     def monitor_queue_ttl 
-      debug "Monitor queue #{id} each #{CCS.configuration.queue_ttl_interval} seconds. If no key found on redis, drain!"
-      queue_ttl          = CCS.configuration.queue_ttl
-      queue_ttl_interval = CCS.configuration.queue_ttl_interval
+      CCS.debug "Monitor queue #{id} each #{CCS.configuration.default_queue_ttl_interval} seconds. If no key found on redis, drain!"
+      queue_ttl          = CCS.configuration.default_queue_ttl
+      queue_ttl_interval = CCS.configuration.default_queue_ttl_interval
 
       RedisHelper.expire(id, queue_ttl)
       every(queue_ttl_interval) do
@@ -53,15 +57,14 @@ module CCS
 
         curr_ttl = RedisHelper.ttl(id)
         case curr_ttl
-          when -1  
-            warn "No ttl found for connection #{id}. Defining it as #{queue_ttl} seconds"
-            RedisHelper.expire(id, queue_ttl)
-          when -2 
-            error "Connection #{id} has no active redis key. Drain!"
-            drain 
-          else
-            RedisHelper.expire(id, queue_ttl)
-          end
+        when -1  
+          CCS.warn "No ttl found for connection #{id}. Defining it as #{queue_ttl} seconds"
+          RedisHelper.expire(id, queue_ttl)
+        when -2 
+          CCS.error "Connection #{id} has no active redis key. Drain!"
+          drain 
+        else
+          RedisHelper.expire(id, queue_ttl)
         end
       end
     end
@@ -70,9 +73,9 @@ module CCS
       redis = RedisHelper.connection(:celluloid)
       while @state == :connected && !@draining
         next unless @semaphore.take
-        debug "waiting in ccs connection"
+        CCS.debug "waiting in ccs connection"
         msg_str = redis.brpoplpush(xmpp_queue, xmpp_connection_queue)
-        debug "got message in ccs connection"
+        CCS.debug "got message in ccs connection"
         msg = MultiJson.load(msg_str)
         send_stanza(msg)
         @send_messages[msg['message_id']] = msg_str
@@ -167,8 +170,8 @@ module CCS
 
     private
 
-    def wait_responses(limit_s=CCS.configuration.drain_timeout)
-      debug "Wait #{limit_s} seconds until releasing #{@handler} (waiting for #{@send_messages.size} messages)"
+    def wait_responses(limit_s=CCS.configuration.default_drain_timeout)
+      CCS.debug "Wait #{limit_s} seconds until releasing #{@handler} (waiting for #{@send_messages.size} messages)"
       every(1) do
         if limit_s <= 0 || @send_messages.empty?
           yield if block_given?
