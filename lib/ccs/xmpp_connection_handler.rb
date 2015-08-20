@@ -14,7 +14,7 @@ module CCS
     end
 
     def add_connection
-      @supervisor.add(XMPPConnection, args: [next_connection_number, self])
+      @supervisor.add(XMPPConnection, as: "#{connection_next_connection_number}", args: [next_connection_number, self])
     end
 
     def remove_connection(id)
