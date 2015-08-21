@@ -22,6 +22,8 @@ module CCS
       reset
       XMPPSimple.logger = CCS.logger
       @xmpp_client = XMPPSimple::Client.new(Actor.current, @sender_id, @api_key, CCS.configuration.host, CCS.configuration.port).connect
+
+      RedisHelper.lpush(id, "#{id}_list_holder")
       monitor_queue_ttl
     end
 
