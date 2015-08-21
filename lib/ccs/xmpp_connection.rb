@@ -23,7 +23,6 @@ module CCS
       XMPPSimple.logger = CCS.logger
       @xmpp_client = XMPPSimple::Client.new(Actor.current, @sender_id, @api_key, CCS.configuration.host, CCS.configuration.port).connect
 
-      RedisHelper.lpush(id, "#{id}_list_holder")
       monitor_queue_ttl
     end
 
@@ -56,19 +55,8 @@ module CCS
       RedisHelper.expire(id, queue_ttl)
       every(queue_ttl_interval) do
         break if @draining
-
-        curr_ttl = RedisHelper.ttl(id)
-        case curr_ttl
-        when -1  
-          CCS.warn "Connection ttl is not set. Setting  queue=#{id} ttl=#{queue_ttl}"
-          RedisHelper.expire(id, queue_ttl)
-        when -2 
-          CCS.error "Connection queue does not exist (drain!) id=#{id}"
-          drain 
-        else
-          CCS.debug("Renew queue ttl queue=#{id} ttl=#{queue_ttl}")
-          RedisHelper.expire(id, queue_ttl)
-        end
+        CCS.debug("Renew queue ttl queue=#{id} ttl=#{queue_ttl}")
+        RedisHelper.expire(id, queue_ttl)
       end
     end
 
