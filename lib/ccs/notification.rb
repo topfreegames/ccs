@@ -39,12 +39,12 @@ module CCS
     end
 
     def delivery_receipt_requested
-      @delay_while_idle || CCS.configuration.default_delay_while_idle
+      @delivery_receipt_requested || CCS.configuration.default_delivery_receipt_requested
     end
 
     def delivery_receipt_requested=(value)
       return if type == :http
-      @delay_while_idle = value ? true : false
+      @delivery_receipt_requested = value ? true : false
     end
 
     def to_json

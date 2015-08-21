@@ -47,9 +47,9 @@ module CCS
 
     # If a queue is live for more than 70 minutes it should be drained (GCM soudld do this before 70 mins)
     def monitor_queue_ttl 
-      CCS.debug "Renew queue #{id} ttl each #{CCS.configuration.default_queue_ttl_interval} seconds. If the queue is not on redis, drain! (ttl=#{CCS.configuration.default_queue_ttl_interval})"
-      queue_ttl          = CCS.configuration.default_queue_ttl
-      queue_ttl_interval = CCS.configuration.default_queue_ttl_interval
+      CCS.debug "Renew queue #{id} ttl each #{CCS.configuration.queue_ttl_interval} seconds. If the queue is not on redis, drain! (ttl=#{CCS.configuration.queue_ttl})"
+      queue_ttl          = CCS.configuration.queue_ttl
+      queue_ttl_interval = CCS.configuration.queue_ttl_interval
 
       RedisHelper.expire(id, queue_ttl)
       every(queue_ttl_interval) do
@@ -170,7 +170,7 @@ module CCS
 
     private
 
-    def wait_responses(limit_s=CCS.configuration.default_drain_timeout)
+    def wait_responses(limit_s=CCS.configuration.drain_timeout)
       CCS.debug "Wait #{limit_s} seconds until releasing #{@handler} (waiting for #{@send_messages.size} messages)"
       every(1) do
         if limit_s <= 0 || @send_messages.empty?
