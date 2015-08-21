@@ -58,12 +58,13 @@ module CCS
         curr_ttl = RedisHelper.ttl(id)
         case curr_ttl
         when -1  
-          CCS.warn "No ttl found for connection #{id}. Defining it as #{queue_ttl} seconds"
+          CCS.warn "Connection ttl is not set. Setting  queue=#{id} ttl=#{queue_ttl}"
           RedisHelper.expire(id, queue_ttl)
         when -2 
-          CCS.error "Connection #{id} has no active redis key. Drain!"
+          CCS.error "Connection queue does not exist (drain!) id=#{id}"
           drain 
         else
+          CCS.debug("Renew queue ttl queue=#{id} ttl=#{queue_ttl}")
           RedisHelper.expire(id, queue_ttl)
         end
       end
