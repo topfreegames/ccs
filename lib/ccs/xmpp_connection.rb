@@ -47,7 +47,7 @@ module CCS
 
     # If a queue is live for more than 70 minutes it should be drained (GCM soudld do this before 70 mins)
     def monitor_queue_ttl 
-      CCS.debug "Monitor queue #{id} each #{CCS.configuration.default_queue_ttl_interval} seconds. If no key found on redis, drain!"
+      CCS.debug "Renew queue #{id} ttl each #{CCS.configuration.default_queue_ttl_interval} seconds. If the queue is not on redis, drain! (ttl=queue_ttl_interval)"
       queue_ttl          = CCS.configuration.default_queue_ttl
       queue_ttl_interval = CCS.configuration.default_queue_ttl_interval
 
