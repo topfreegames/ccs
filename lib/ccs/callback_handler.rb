@@ -6,10 +6,13 @@ module CCS
 
     def initialize(params={})
       @sender_id = params[:sender_id]
-      @redis = RedisHelper.connection(:celluloid)
       @handler_name = params[:handler_name]
       @callback = {}
       async.run
+    end
+
+    def redis
+      @redis ||= RedisHelper.connection(:celluloid)
     end
 
     def upstream_queue
@@ -32,7 +35,7 @@ module CCS
       CCS.logger.info "starting ccs callback handler for #{sender_id}"
       loop do
         begin
-          list, value = @redis.blpop(upstream_queue, error_queue, receipt_queue, 0)
+          list, value = redis.blpop(upstream_queue, error_queue, receipt_queue, 0)
           msg = MultiJson.load(value)
           case list
           when upstream_queue

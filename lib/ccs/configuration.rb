@@ -16,6 +16,11 @@ module CCS
       @dry_run            = false
     end
 
+    def redis
+      @redis ||= RedisHelper.connection(:celluloid)
+    end
+
+
     def port=(value)
       fail 'must be a fixnum' unless value.class == Fixnum
       fail 'must be between 0 and 65535' unless value.between?(0, 65_535)
@@ -61,7 +66,7 @@ module CCS
     private
 
     def validate_redis
-      RedisHelper.ping
+      redis.ping
     rescue Redis::CannotConnectError => e
       raise e.to_s
     end

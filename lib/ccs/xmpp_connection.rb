@@ -26,6 +26,10 @@ module CCS
       monitor_queue_ttl
     end
 
+    def redis
+      @redis ||= RedisHelper.connection(:celluloid)
+    end
+
     def upstream_queue
       @upstream_queue ||= "#{@sender_id}:#{UPSTREAM_QUEUE}"
     end
@@ -52,16 +56,15 @@ module CCS
       queue_ttl          = CCS.configuration.queue_ttl
       queue_ttl_interval = CCS.configuration.queue_ttl_interval
 
-      RedisHelper.expire(id, queue_ttl)
+      redis.expire(id, queue_ttl)
       every(queue_ttl_interval) do
         break if @draining
         CCS.debug("Renew queue ttl queue=#{id} ttl=#{queue_ttl}")
-        RedisHelper.expire(id, queue_ttl)
+        redis.expire(id, queue_ttl)
       end
     end
 
     def sender_loop
-      redis = RedisHelper.connection(:celluloid)
       while @state == :connected && !@draining
         next unless @semaphore.take
         before = Time.now
@@ -104,7 +107,7 @@ module CCS
       @send_messages = {}
       @semaphore = Semaphore.new(MAX_MESSAGES)
 
-      RedisHelper.merge_and_delete(xmpp_connection_queue, xmpp_queue)
+      redis.merge_and_delete(xmpp_connection_queue, xmpp_queue)
     end
 
     # simple xmpp handler method
@@ -145,7 +148,7 @@ module CCS
       when nil
         CCS.debug('Received upstream message')
         # upstream
-        RedisHelper.rpush(upstream_queue, MultiJson.dump(content))
+        redis.rpush(upstream_queue, MultiJson.dump(content))
         ack(content)
       when 'ack'
         handle_ack(content)
@@ -175,7 +178,7 @@ module CCS
 
     def handle_receipt(content)
       CCS.debug("Delivery receipt received for: #{content['message_id']}")
-      RedisHelper.rpush(receipt_queue, MultiJson.dump(content))
+      redis.rpush(receipt_queue, MultiJson.dump(content))
       ack(content)
     end
 
@@ -185,7 +188,7 @@ module CCS
       if msg.nil?
         CCS.info("Received ack for unknown message: #{content['message_id']}")
       else
-        if RedisHelper.lrem(xmpp_connection_queue, -1, msg) < 1
+        if redis.lrem(xmpp_connection_queue, -1, msg) < 1
           CCS.debug("NOT FOUND: #{MultiJson.dump(msg)}")
         end
         @semaphore.release
@@ -198,8 +201,8 @@ module CCS
       if msg.nil?
         CCS.info("Received nack for unknown message: #{content['message_id']}")
       else
-        RedisHelper.lrem(xmpp_connection_queue, -1, msg)
-        RedisHelper.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
+        redis.lrem(xmpp_connection_queue, -1, msg)
+        redis.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
       end
     end
 

@@ -22,12 +22,16 @@ module CCS
       CCS.debug "Initialized connection handler for #{@sender_id}"
     end
 
+    def redis
+      @redis ||= RedisHelper.connection(:celluloid)
+    end
+    
     def queue_size
       number_of_messages = 0
       (1..1000).each do |n|
-        number_of_messages += RedisHelper.llen(xmpp_connection_queue(n)) || 0
+        number_of_messages += redis.llen(xmpp_connection_queue(n)) || 0
       end
-      number_of_messages +=  RedisHelper.llen(xmpp_queue) || 0
+      number_of_messages +=  redis.llen(xmpp_queue) || 0
       return number_of_messages
     end
 
@@ -64,7 +68,7 @@ module CCS
 
     def next_connection_number
       (1..1000).each do |n|
-        return n if !RedisHelper.exists(xmpp_connection_queue(n))
+        return n if !redis.exists(xmpp_connection_queue(n))
       end
       nil
     end
@@ -72,7 +76,7 @@ module CCS
     private
 
     def requeue(id)
-      RedisHelper.merge_and_delete(xmpp_connection_queue(id), xmpp_queue)
+      redis.merge_and_delete(xmpp_connection_queue(id), xmpp_queue)
     end
   end
 end

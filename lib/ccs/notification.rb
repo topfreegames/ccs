@@ -47,7 +47,7 @@ module CCS
       @delivery_receipt_requested = value ? true : false
     end
 
-    def dy_run
+    def dry_run
       @dry_run || CCS.configuration.dry_run
     end    
 
