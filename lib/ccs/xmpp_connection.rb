@@ -184,7 +184,6 @@ module CCS
       if msg.nil?
         CCS.info("Received ack for unknown message: #{content['message_id']}")
       else
-        msg.delete('message_id')
         CCS.debug("ACK mesg_to_remove=#{msg}")
         if RedisHelper.lrem(xmpp_connection_queue, -1, msg) < 1
           CCS.debug("NOT FOUND: #{MultiJson.dump(msg)}")
@@ -199,7 +198,6 @@ module CCS
       if msg.nil?
         CCS.info("Received nack for unknown message: #{content['message_id']}")
       else
-        msg.delete('message_id')
         CCS.debug("ACK mesg_to_remove=#{msg}")
         RedisHelper.lrem(xmpp_connection_queue, -1, msg)
         RedisHelper.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
