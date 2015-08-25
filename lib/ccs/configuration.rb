@@ -1,12 +1,7 @@
 module CCS
   class Configuration
-    attr_accessor :host
-    attr_accessor :redis_url
-    attr_reader :drain_timeout
-    attr_reader :queue_ttl
-    attr_reader :queue_ttl_interval
-    attr_reader :port
-    attr_reader :default_time_to_live, :default_delay_while_idle, :default_delivery_receipt_requested
+    attr_accessor :host, :redis_url
+    attr_reader :drain_timeout, :queue_ttl, :queue_ttl_interval, :port, :dry_run, :default_time_to_live, :default_delay_while_idle, :default_delivery_receipt_requested
 
     def initialize
       @host               = 'gcm.googleapis.com'
@@ -19,12 +14,17 @@ module CCS
       @queue_ttl_interval = 60
       @queue_ttl          = 600
       @drain_timeout      = 10
+      @dry_run            = false
     end
 
     def port=(value)
       fail 'must be a fixnum' unless value.class == Fixnum
       fail 'must be between 0 and 65535' unless value.between?(0, 65_535)
       @port = value
+    end
+
+    def dry_run=(value)
+      @dry_run = value ? true : false
     end
 
     def default_time_to_live=(value)

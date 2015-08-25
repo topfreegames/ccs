@@ -47,6 +47,10 @@ module CCS
       @delivery_receipt_requested = value ? true : false
     end
 
+    def dy_run
+      @dry_run || CCS.configuration.dry_run
+    end    
+
     def to_json
       msg = {}
       if type == :xmpp
@@ -60,6 +64,7 @@ module CCS
       msg['time_to_live']                 = time_to_live                unless time_to_live.nil?
       msg['delay_while_idle']             = delay_while_idle            unless delay_while_idle.nil?
       msg['delivery_receipt_requested']   = delivery_receipt_requested  unless delivery_receipt_requested.nil? || type == :http
+      msg['dry_run']                      = dry_run                     unless dry_run.nil?
       msg.to_json
     end
   end

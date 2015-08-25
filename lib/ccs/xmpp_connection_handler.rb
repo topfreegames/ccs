@@ -41,8 +41,9 @@ module CCS
 
     def terminate_child(id)
       CCS.debug "Terminate drained actor (#{xmpp_connection_queue(id)})"
-      Actor[xmpp_connection_queue(id)].terminate
+      Actor[xmpp_connection_queue(id)].terminate 
       requeue(id)
+      add_connection
     end
 
     def add_connection
@@ -52,7 +53,6 @@ module CCS
         return
       end
 
-      CCS.debug({id: connection_n, handler: @handler_name, sender_id: @sender_id, api_key: @api_key})
       if !@supervisor
         @supervisor = XMPPConnection.supervise({id: connection_n, handler: @handler_name, sender_id: @sender_id, api_key: @api_key})
       else

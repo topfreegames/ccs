@@ -94,9 +94,9 @@ module CCS
 
     def drain
       @draining = true
-      wait_responses{ Actor[@handler].async.terminate_child(id) }
-      Actor[@handler].async.add_connection
       @semaphore.interrupt
+      wait_responses
+      Actor[@handler].async.terminate_child(id)
     end
 
     def reset
@@ -165,7 +165,7 @@ module CCS
       CCS.debug "Wait #{limit_s} seconds until releasing #{@handler} (waiting for #{@send_messages.size} messages)"
       every(1) do
         if limit_s <= 0 || @send_messages.empty?
-          yield if block_given?
+          return
         else
           limit_s -= 1
         end
@@ -184,7 +184,6 @@ module CCS
       if msg.nil?
         CCS.info("Received ack for unknown message: #{content['message_id']}")
       else
-        CCS.debug("ACK mesg_to_remove=#{msg}")
         if RedisHelper.lrem(xmpp_connection_queue, -1, msg) < 1
           CCS.debug("NOT FOUND: #{MultiJson.dump(msg)}")
         end
@@ -198,7 +197,6 @@ module CCS
       if msg.nil?
         CCS.info("Received nack for unknown message: #{content['message_id']}")
       else
-        CCS.debug("NACK mesg_to_remove=#{msg}")
         RedisHelper.lrem(xmpp_connection_queue, -1, msg)
         RedisHelper.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
       end
