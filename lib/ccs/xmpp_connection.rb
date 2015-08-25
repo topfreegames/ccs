@@ -180,10 +180,12 @@ module CCS
 
     def handle_ack(content)
       msg = @send_messages.delete(content['message_id'])
+      CCS.debug("ACK content=#{content} msg=#{msg}")
       if msg.nil?
         CCS.info("Received ack for unknown message: #{content['message_id']}")
       else
         msg.delete('message_id')
+        CCS.debug("ACK mesg_to_remove=#{msg}")
         if RedisHelper.lrem(xmpp_connection_queue, -1, msg) < 1
           CCS.debug("NOT FOUND: #{MultiJson.dump(msg)}")
         end
@@ -193,10 +195,12 @@ module CCS
 
     def handle_nack(content)
       msg = @send_messages.delete(content['message_id'])
+      CCS.debug("NACK content=#{content} msg=#{msg}")
       if msg.nil?
         CCS.info("Received nack for unknown message: #{content['message_id']}")
       else
         msg.delete('message_id')
+        CCS.debug("ACK mesg_to_remove=#{msg}")
         RedisHelper.lrem(xmpp_connection_queue, -1, msg)
         RedisHelper.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
       end
@@ -204,6 +208,8 @@ module CCS
 
     # the connection will be closed, drain it
     def handle_control(content)
+      CCS.debug("CONTROL: #{content}")
+
       case content['control_type']
       when 'CONNECTION_DRAINING'
         drain unless @draining
