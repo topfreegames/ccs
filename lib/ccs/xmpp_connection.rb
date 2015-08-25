@@ -64,9 +64,10 @@ module CCS
       redis = RedisHelper.connection(:celluloid)
       while @state == :connected && !@draining
         next unless @semaphore.take
-        CCS.debug "waiting in ccs connection"
+        before = Time.now
+        CCS.debug "waiting in ccs connection in_flight=#{@send_messages.size}"
         msg_str = redis.brpoplpush(xmpp_queue, xmpp_connection_queue)
-        CCS.debug "got message in ccs connection"
+        CCS.debug "got message in ccs connection wait=#{Time.now - before}s"
         msg = MultiJson.load(msg_str)
         send_stanza(msg)
         @send_messages[msg['message_id']] = msg_str

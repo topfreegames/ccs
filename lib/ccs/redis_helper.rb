@@ -62,7 +62,7 @@ module CCS
       end
     end
 
-    def connection(driver = :hiredis)
+    def connection(driver = :celluloid)
       Redis.new(url: CCS.configuration.redis_url,
                 driver: driver)
     end

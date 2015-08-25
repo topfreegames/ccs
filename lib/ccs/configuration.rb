@@ -7,7 +7,6 @@ module CCS
       @host               = 'gcm.googleapis.com'
       @port               = 5235
       @redis_url          = 'redis://localhost:6379'
-      @drain_timeout      = 5
       @default_time_to_live = 0
       @default_delay_while_idle = false
       @default_delivery_receipt_requested = false
