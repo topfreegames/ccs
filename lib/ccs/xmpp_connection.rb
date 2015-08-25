@@ -198,7 +198,7 @@ module CCS
       if msg.nil?
         CCS.info("Received nack for unknown message: #{content['message_id']}")
       else
-        CCS.debug("ACK mesg_to_remove=#{msg}")
+        CCS.debug("NACK mesg_to_remove=#{msg}")
         RedisHelper.lrem(xmpp_connection_queue, -1, msg)
         RedisHelper.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
       end
