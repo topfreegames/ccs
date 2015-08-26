@@ -97,6 +97,7 @@ module CCS
     end
 
     def drain
+      CCS.debug("Drain #{id}")
       @draining = true
       @semaphore.interrupt
       wait_responses
@@ -112,21 +113,21 @@ module CCS
 
     # simple xmpp handler method
     def reconnecting
-      CCS.debug('Reconnecting')
+      CCS.debug("Reconnecting #{id}")
       @state = :reconnecting
       reset
     end
 
     # simple xmpp handler method
     def connected
-      CCS.debug('Connected')
+      CCS.debug("Connected #{id}")
       @state = :connected
       async.sender_loop
     end
 
     # simple xmpp handler method
     def disconnected
-      CCS.debug('Disconnected')
+      CCS.debug("Disconnected #{id}")
       @state = :disconnected
       @semaphore.interrupt
     end
