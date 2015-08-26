@@ -1,3 +1,5 @@
+require 'timers'
+
 module CCS
   class XMPPConnection < XMPPSimple::Api
     include Celluloid::IO
@@ -57,7 +59,8 @@ module CCS
       queue_ttl_interval = CCS.configuration.queue_ttl_interval
 
       redis.expire(id, queue_ttl)
-      every(queue_ttl_interval) do
+
+      timers.every(queue_ttl_interval) do 
         break if @draining
         CCS.debug("Renew queue ttl queue=#{id} ttl=#{queue_ttl}")
         redis.expire(id, queue_ttl)
