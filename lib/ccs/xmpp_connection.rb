@@ -193,9 +193,9 @@ module CCS
         CCS.info("Received ack for unknown message: #{content['message_id']}")
       else
         CCS.debug("Remove message from #{xmpp_connection_queue} message=#{msg}")  
-        # if redis.lrem(xmpp_connection_queue, -1, msg) < 1
-        #   CCS.debug("NOT FOUND: #{MultiJson.dump(msg)}")
-        # end
+        if redis.lrem(xmpp_connection_queue, -1, msg) < 1
+          CCS.debug("NOT FOUND: #{MultiJson.dump(msg)}")
+        end
         @semaphore.release
       end
     end
