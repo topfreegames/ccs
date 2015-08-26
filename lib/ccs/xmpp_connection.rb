@@ -25,7 +25,7 @@ module CCS
       XMPPSimple.logger = CCS.logger
       @xmpp_client = XMPPSimple::Client.new(Actor.current, @sender_id, @api_key, CCS.configuration.host, CCS.configuration.port).connect
 
-      monitor_queue_ttl
+      # monitor_queue_ttl
     end
 
     def redis
@@ -64,7 +64,7 @@ module CCS
         break if @draining
         CCS.debug("Renew queue ttl queue=#{id} ttl=#{queue_ttl}")
         redis.expire(id, queue_ttl)
-      end
+      end 
     end
 
     def sender_loop
