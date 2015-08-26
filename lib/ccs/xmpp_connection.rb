@@ -69,13 +69,11 @@ module CCS
         next unless @semaphore.take
         before = Time.now
         CCS.debug "waiting in ccs connection in_flight=#{@send_messages.size}"
-        msg_str = redis.rpoplpush(xmpp_queue, xmpp_connection_queue)
-        unless msg_str.nil?
-          CCS.debug "got message in ccs connection wait=#{Time.now - before}s"
-          msg = MultiJson.load(msg_str)
-          send_stanza(msg)
-          @send_messages[msg['message_id']] = msg_str
-        end
+        msg_str = redis.brpoplpush(xmpp_queue, xmpp_connection_queue)
+        CCS.debug "got message in ccs connection wait=#{Time.now - before}s"
+        msg = MultiJson.load(msg_str)
+        send_stanza(msg)
+        @send_messages[msg['message_id']] = msg_str
       end
     end
 
