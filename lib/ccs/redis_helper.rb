@@ -1,4 +1,4 @@
-require 'redis'
+require 'celluloid/redis'
 
 module CCS
   module RedisHelper
@@ -19,10 +19,6 @@ module CCS
 
     def connection(driver = :celluloid)
       Redis.new(url: CCS.configuration.redis_url, driver: driver)
-    end
-
-    def redis(driver = :celluloid)
-      @redis ||= connection(driver)
     end
   end
 end
