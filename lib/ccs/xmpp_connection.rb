@@ -68,11 +68,12 @@ module CCS
     end
 
     def sender_loop
+      r = Redis.new(url: CCS.configuration.redis_url, driver: driver)
       while @state == :connected && !@draining
         next unless @semaphore.take
         before = Time.now
         CCS.debug "waiting in ccs connection in_flight=#{@send_messages.size}"
-        msg_str = redis.brpoplpush(xmpp_queue, xmpp_connection_queue)
+        msg_str = r.brpoplpush(xmpp_queue, xmpp_connection_queue)
         CCS.debug "got message in ccs connection wait=#{Time.now - before}s"
         msg = MultiJson.load(msg_str)
         send_stanza(msg)
