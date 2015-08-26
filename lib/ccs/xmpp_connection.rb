@@ -52,7 +52,7 @@ module CCS
       @xmpp_connection_queue ||= "#{@sender_id}:#{XMPP_QUEUE}:#{@id}"
     end
 
-    # If a queue is live for more than 70 minutes it should be drained (GCM soudld do this before 70 mins)
+    # If a queue is live for more than the given period it should be drained
     def monitor_queue_ttl 
       CCS.debug "Renew queue #{id} ttl each #{CCS.configuration.queue_ttl_interval} seconds. If the queue is not on redis, drain! (ttl=#{CCS.configuration.queue_ttl})"
       queue_ttl          = CCS.configuration.queue_ttl

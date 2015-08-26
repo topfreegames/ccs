@@ -10,23 +10,19 @@ module CCS
     end
 
     def take
-      ret = @con.wait if @current == @max
-      CCS.debug("Take semaphore ret=#{ret}, current=#{@current + 1} max=#{@max}")
-
-      return if ret
+      CCS.debug("Take semaphore return=#{@current == @max}, current=#{@current + 1 if @current != @max} max=#{@max}")
+      return if @con.wait if @current == @max
       @current += 1
     end
 
     def release
-      signal = @current == @max
-      CCS.debug("Release semaphore signal=#{!signal}, current=#{@current - 1} max=#{@max}")
-      
-      @con.signal(false) if signal
+      CCS.debug("Release semaphore signal=#{@current == @max}, current=#{@current - 1} max=#{@max}")
+      @con.signal(false) if @current == @max
       @current -= 1
     end
 
     def interrupt
-      CCS.debug("Interrupt semaphore current=#{@current} max=#{@max}")
+      CCS.debug("Interrupt semaphore signal=true, current=#{@current} max=#{@max}")
       @con.signal(true)
     end
   end
