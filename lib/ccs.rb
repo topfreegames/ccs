@@ -22,6 +22,7 @@ module CCS
   XMPP_QUEUE         = 'ccs_xmpp_sending'
   UPSTREAM_QUEUE     = 'ccs_upstream'
   RECEIPT_QUEUE      = 'ccs_receipt'
+  CONN_PLACEHOLDER   = 'connection_placeholder'
 
   CONNECTIONS        = 'ccs_connections'
   MAX_MESSAGES       = 100

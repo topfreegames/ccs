@@ -5,6 +5,7 @@ module CCS
     
     module PatchedRedis 
       def merge_and_delete(source, destination)
+        lrem(source, 0, "#{CONN_PLACEHOLDER}")
         messages = lrange(source, 0, -1)
         pipelined do
           rpush(destination, messages) unless messages.empty?

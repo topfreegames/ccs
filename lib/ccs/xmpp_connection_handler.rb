@@ -68,7 +68,11 @@ module CCS
 
     def next_connection_number
       (1..1000).each do |n|
-        return n if !redis.exists(xmpp_connection_queue(n))
+        exists, size = redis.multi |m|
+          m.exists(xmpp_connection_queue(n))
+          m.lpush(xmpp_connection_queue(n), "#{CONN_PLACEHOLDER}")
+        end
+        return n if(!exists && size == 1)
       end
       nil
     end
