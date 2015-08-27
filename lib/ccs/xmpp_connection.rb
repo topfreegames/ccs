@@ -18,6 +18,8 @@ module CCS
       @sender_id = params[:sender_id]
       @api_key = params[:api_key]
       @id = params[:id]
+      
+      reset_exp_backoff
 
       Actor[xmpp_connection_queue] = Actor.current
 
@@ -85,6 +87,9 @@ module CCS
       r = RedisHelper.connection(:celluloid)
       while @state == :connected && !@draining
         next unless @semaphore.take
+        
+        sleep exp_backoff[exp_backoff_step] if @exponencial_backoff
+        
         before = Time.now
         CCS.debug "waiting in ccs connection in_flight=#{@send_messages.size}"
         msg_str = r.brpoplpush(xmpp_queue, xmpp_connection_queue)
@@ -172,8 +177,12 @@ module CCS
         redis.rpush(upstream_queue, MultiJson.dump(content))
         ack(content)
       when 'ack'
+        redis.incr(ack_counter)
+        reset_exp_backoff
         handle_ack(content)
       when 'nack'
+        redis.incr(nack_counter)
+        reset_exp_backoff
         handle_nack(content)
       when 'receipt'
         handle_receipt(content)
@@ -197,6 +206,19 @@ module CCS
       end
     end
 
+    def reset_exp_backoff
+      @exp_backoff_step = 0
+      @exponencial_backoff = false
+    end
+
+    def exp_backoff_step
+      return (@exp_backoff_step++) - 1
+    end
+
+    def exp_backoff
+      @exp_backoff ||= (1..MAX_BACKOFF).map{ |iter|(1.0/2.0*(2.0**iter - 1.0)).ceil }
+    end
+
     def handle_receipt(content)
       CCS.debug("Delivery receipt received for: #{content['message_id']}")
       redis.rpush(receipt_queue, MultiJson.dump(content))
@@ -204,7 +226,6 @@ module CCS
     end
 
     def handle_ack(content)
-      redis.incr(ack_counter)
       msg = @send_messages.delete(content['message_id'])
       CCS.debug("ACK content=#{content} msg=#{msg}")
       if msg.nil?
@@ -219,14 +240,17 @@ module CCS
     end
 
     def handle_nack(content)
-      redis.incr(nack_counter)
       msg = @send_messages.delete(content['message_id'])
       CCS.debug("NACK content=#{content} msg=#{msg}")
       if msg.nil?
         CCS.info("Received nack for unknown message: #{content['message_id']}")
       else
         redis.lrem(xmpp_connection_queue, -1, msg)
-        redis.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
+        
+        if(!handle_backoff(msg))
+          redis.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
+        end
+
         @semaphore.release
       end
     end
@@ -240,6 +264,21 @@ module CCS
         drain unless @draining
       else
         CCS.info("Received unknown control type: #{content['control_type']}")
+      end
+    end
+
+    def handle_backoff(msg)
+      case msg['error']
+      when 'SERVICE_UNAVAILABLE'
+        CCS.info("Received: SERVICE_UNAVAILABLE. Starting exponencialbackoff")
+        @exponencial_backoff = true
+        return true
+      when 'INTERNAL_SERVER_ERROR'
+        CCS.info("Received: INTERNAL_SERVER_ERROR. Starting exponencialbackoff")
+        @exponencial_backoff = true
+        return true
+      else
+        return false
       end
     end
   end
