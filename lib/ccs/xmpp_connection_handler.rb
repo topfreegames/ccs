@@ -27,11 +27,12 @@ module CCS
     end
     
     def queue_size
+      r = RedisHelper.connection(:celluloid)
       number_of_messages = 0
       (1..1000).each do |n|
-        number_of_messages += redis.llen(xmpp_connection_queue(n)) || 0
+        number_of_messages += r.llen(xmpp_connection_queue(n)) || 0
       end
-      number_of_messages +=  redis.llen(xmpp_queue) || 0
+      number_of_messages +=  r.llen(xmpp_queue) || 0
       return number_of_messages
     end
 
@@ -68,9 +69,10 @@ module CCS
 
     def next_connection_number
       (1..1000).each do |n|
-        exists = redis.exists(xmpp_connection_queue(n))
-        size   = redis.lpush(xmpp_connection_queue(n), "#{CONN_PLACEHOLDER}") unless exists
-        debug("next_connection_number=#{n}, connection_exists=#{exists}, xmpp_connection_queue_size=#{size}")
+        q = xmpp_connection_queue(n)
+        exists = redis.exists(q)
+        size   = redis.lpush(q, "#{CONN_PLACEHOLDER}") unless exists
+        debug("next_connection_number=#{n}, connection_exists=#{exists}, xmpp_connection_queue_size=#{size}") if(!exists && size == 1) 
         return n if(!exists && size == 1)
       end
       nil
