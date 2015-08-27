@@ -54,6 +54,14 @@ module CCS
       @xmpp_connection_queue ||= "#{@sender_id}:#{XMPP_QUEUE}:#{@id}"
     end
 
+    def ack_counter
+      @ack_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{ACK_COUNTER}"
+    end
+
+    def nack_counter
+      @nack_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{NACK_COUNTER}"
+    end
+
     # If a queue is live for more than the given period it should be drained
     def monitor_queue_ttl 
       CCS.debug "Renew queue #{id} ttl each #{CCS.configuration.queue_ttl_interval} seconds. If the queue is not on redis, drain! (ttl=#{CCS.configuration.queue_ttl})"
@@ -191,6 +199,7 @@ module CCS
     end
 
     def handle_ack(content)
+      redis.incr(ack_counter)
       msg = @send_messages.delete(content['message_id'])
       CCS.debug("ACK content=#{content} msg=#{msg}")
       if msg.nil?
@@ -205,6 +214,7 @@ module CCS
     end
 
     def handle_nack(content)
+      redis.incr(nack_counter)
       msg = @send_messages.delete(content['message_id'])
       CCS.debug("NACK content=#{content} msg=#{msg}")
       if msg.nil?

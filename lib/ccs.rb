@@ -24,6 +24,9 @@ module CCS
   RECEIPT_QUEUE      = 'ccs_receipt'
   CONN_PLACEHOLDER   = 'connection_placeholder'
 
+  ACK_COUNTER        = 'ack_counter'
+  NACK_COUNTER       = 'nack_counter'
+
   CONNECTIONS        = 'ccs_connections'
   MAX_MESSAGES       = 100
 
