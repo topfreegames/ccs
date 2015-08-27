@@ -20,7 +20,7 @@ module CCS
         add_connection
       end
       
-      XMPPConnectionMonitor.supervise
+      XMPPConnectionMonitor.supervise({sender_id: @sender_id})
       
       CCS.debug "Initialized connection handler for #{@sender_id}"
     end

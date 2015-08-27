@@ -3,7 +3,8 @@ module CCS
     include Celluloid 
     include Celluloid::Logger
 
-    def initialize
+    def initialize(params={})
+      @sender_id = params[:sender_id]
       async.run
     end
 
