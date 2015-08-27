@@ -11,10 +11,6 @@ module CCS
       async.run
     end
 
-    def redis
-      @redis ||= RedisHelper.connection(:celluloid)
-    end
-
     def upstream_queue
       @upstream_queue ||= "#{sender_id}:#{UPSTREAM_QUEUE}"
     end
@@ -33,6 +29,7 @@ module CCS
 
     def run
       CCS.logger.info "starting ccs callback handler for #{sender_id}"
+      redis = RedisHelper.connection(:celluloid)
       loop do
         begin
           list, value = redis.blpop(upstream_queue, error_queue, receipt_queue, 0)
@@ -52,3 +49,4 @@ module CCS
     end
   end
 end
+

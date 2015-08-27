@@ -72,6 +72,7 @@ module CCS
           m.exists(xmpp_connection_queue(n))
           m.lpush(xmpp_connection_queue(n), "#{CONN_PLACEHOLDER}")
         end
+        debug("next_connection_number=#{n}, connection_exists=#{exists}, xmpp_connection_queue_size=#{size}")
         return n if(!exists && size == 1)
       end
       nil
