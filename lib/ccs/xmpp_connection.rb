@@ -212,7 +212,8 @@ module CCS
     end
 
     def exp_backoff_step
-      return (@exp_backoff_step++) - 1
+      @exp_backoff_step++
+      return @exp_backoff_step - 1
     end
 
     def exp_backoff
