@@ -19,7 +19,6 @@ Gem::Specification.new do |spec|
   spec.require_paths = ['lib']
 
   spec.add_dependency 'celluloid-redis'
-  spec.add_dependency 'timers'
   spec.add_dependency 'nokogiri'
   spec.add_dependency 'multi_json'
 

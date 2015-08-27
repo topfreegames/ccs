@@ -1,5 +1,3 @@
-require 'timers'
-
 module CCS
   class XMPPConnectionMonitor
     include Celluloid 
@@ -23,7 +21,7 @@ module CCS
         redis.expire(xmpp_connection_queue(i), queue_ttl)
       end
 
-      timers.every(queue_ttl_interval) do 
+      every(queue_ttl_interval) do 
         (1..1000).each do |i|
           monitor_queue_ttl(xmpp_connection_queue(i))
         end

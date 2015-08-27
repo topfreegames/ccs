@@ -1,5 +1,3 @@
-require 'timers'
-
 module CCS
   class XMPPConnection < XMPPSimple::Api
     include Celluloid::IO
