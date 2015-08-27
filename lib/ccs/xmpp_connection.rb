@@ -109,6 +109,7 @@ module CCS
     end
 
     def reset
+      CCS.debug("Reseting #{id}")
       @send_messages = {}
       @semaphore = Semaphore.new(MAX_MESSAGES)
 
