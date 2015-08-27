@@ -28,7 +28,7 @@ module CCS
   ACK_COUNTER        = 'ack_counter'
   NACK_COUNTER       = 'nack_counter'
   SENT_COUNTER       = 'sent_counter'
-  RETRY_COUNTER      = 'retry_counter'
+  BACKOFF_COUNTER    = 'backoff_counter'
 
   CONNECTIONS        = 'ccs_connections'
   MAX_MESSAGES       = 100

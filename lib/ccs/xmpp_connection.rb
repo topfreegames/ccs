@@ -66,14 +66,14 @@ module CCS
       @sent_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{SENT_COUNTER}"
     end
 
-    def retry_counter
-      @retry_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{RETRY_COUNTER}"
+    def backoff_counter
+      @backoff_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{BACKOFF_COUNTER}"
     end
 
     def sender_loop
       r = RedisHelper.connection(:celluloid)
       while @state == :connected && !@draining
-        retry_messages_sender_loop if @exponencial_backoff
+        sleep exp_backoff[exp_backoff_step] if @backing_off
 
         next unless @semaphore.take
         
@@ -85,24 +85,6 @@ module CCS
         send_stanza(msg)
         r.incr(sent_counter)
         @send_messages[msg['message_id']] = msg_str
-      end
-    end
-
-    def retry_messages_sender_loop
-      while @state == :connected && !@draining
-        return if @retry_messages.empty?
-        next unless @semaphore.take && @send_retry_messages.empty?
-        before = Time.now
-        CCS.debug "RETRY in_flight=#{@send_messages.size}"
-        sleep_step = exp_backoff_step
-        sleep exp_backoff[sleep_step]
-        msg_str = r.blpush(xmpp_connection_queue, @retry_messages.shift)
-        CCS.debug "RETRY slept=#{sleep_step}s"
-        msg = MultiJson.load(msg_str)
-        send_stanza(msg)
-        r.incr(retry_counter)
-        @send_messages[msg['message_id']] = msg_str
-        @send_retry_messages[msg['message_id']] = msg_str
       end
     end
 
@@ -184,11 +166,9 @@ module CCS
         ack(content)
       when 'ack'
         redis.incr(ack_counter)
-        reset_exp_backoff
         handle_ack(content)
       when 'nack'
         redis.incr(nack_counter)
-        reset_exp_backoff
         handle_nack(content)
       when 'receipt'
         handle_receipt(content)
@@ -214,10 +194,11 @@ module CCS
 
     def reset_exp_backoff
       @exp_backoff_step = 0
-      @exponencial_backoff = false
+      @backing_off = false
     end
 
     def exp_backoff_step
+      return 0 if @backing_off == false
       return (@exp_backoff_step += 1) - 1
     end
 
@@ -233,7 +214,6 @@ module CCS
 
     def handle_ack(content)
       msg = @send_messages.delete(content['message_id'])
-      @send_retry_messages.delete(content['message_id'])
       CCS.debug("ACK content=#{content} msg=#{msg}")
       if msg.nil?
         CCS.info("Received ack for unknown message: #{content['message_id']}")
@@ -242,21 +222,27 @@ module CCS
         if redis.lrem(xmpp_connection_queue, -1, msg) < 1
           CCS.debug("NOT FOUND: #{MultiJson.dump(msg)}")
         end
+        reset_exp_backoff
         @semaphore.release
       end
     end
 
     def handle_nack(content)
       msg = @send_messages.delete(content['message_id'])
-      @send_retry_messages.delete(content['message_id'])
       CCS.debug("NACK content=#{content} msg=#{msg}")
       if msg.nil?
         CCS.info("Received nack for unknown message: #{content['message_id']}")
       else
         redis.lrem(xmpp_connection_queue, -1, msg)
         
-        if(!handle_backoff(content, msg))
+        if ['SERVICE_UNAVAILABLE', 'INTERNAL_SERVER_ERROR'].include? content['error'] 
+          CCS.info("Received: #{content['error']}. Starting exponencial backoff")
+          @backing_off = true
+          redis.incr(backoff_counter)
+          redis.lpush(xmpp_queue, msg)
+        else 
           redis.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
+          reset_exp_backoff
         end
 
         @semaphore.release
@@ -272,23 +258,6 @@ module CCS
         drain unless @draining
       else
         CCS.info("Received unknown control type: #{content['control_type']}")
-      end
-    end
-
-    def handle_backoff(content, msg)
-      case content['error']
-      when 'SERVICE_UNAVAILABLE'
-        CCS.info("Received: SERVICE_UNAVAILABLE. Starting exponencialbackoff")
-        @exponencial_backoff = true
-        @retry_messages << msg
-        return true
-      when 'INTERNAL_SERVER_ERROR'
-        CCS.info("Received: INTERNAL_SERVER_ERROR. Starting exponencialbackoff")
-        @exponencial_backoff = true
-        @retry_messages << msg
-        return true
-      else
-        return false
       end
     end
   end
