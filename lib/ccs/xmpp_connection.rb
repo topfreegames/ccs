@@ -62,6 +62,10 @@ module CCS
       @nack_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{NACK_COUNTER}"
     end
 
+    def sent_counter
+      @sent_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{SENT_COUNTER}"
+    end
+
     # If a queue is live for more than the given period it should be drained
     def monitor_queue_ttl 
       CCS.debug "Renew queue #{id} ttl each #{CCS.configuration.queue_ttl_interval} seconds. If the queue is not on redis, drain! (ttl=#{CCS.configuration.queue_ttl})"
@@ -87,6 +91,7 @@ module CCS
         CCS.debug "got message in ccs connection wait=#{Time.now - before}s"
         msg = MultiJson.load(msg_str)
         send_stanza(msg)
+        r.incr(sent_counter)
         @send_messages[msg['message_id']] = msg_str
       end
     end
