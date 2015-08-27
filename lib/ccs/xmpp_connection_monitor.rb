@@ -23,7 +23,7 @@ module CCS
 
       every(queue_ttl_interval) do 
         (1..1000).each do |i|
-          monitor_queue_ttl(xmpp_connection_queue(i))
+          monitor_queue_ttl(xmpp_connection_queue(i), queue_ttl)
         end
       end 
     end
