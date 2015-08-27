@@ -73,10 +73,13 @@ module CCS
     def sender_loop
       r = RedisHelper.connection(:celluloid)
       while @state == :connected && !@draining
-        sleep exp_backoff[exp_backoff_step] if @backing_off
-
         next unless @semaphore.take
-        
+        if @backing_off
+          sleep_step = exp_backoff_step
+          debug "Sleep #{sleep_step} due a backoff"
+          sleep exp_backoff[sleep_step] 
+        end
+
         before = Time.now
         CCS.debug "waiting in ccs connection in_flight=#{@send_messages.size}"
         msg_str = r.brpoplpush(xmpp_queue, xmpp_connection_queue)
@@ -199,6 +202,9 @@ module CCS
 
     def exp_backoff_step
       return 0 if @backing_off == false
+      
+      drain if(@exp_backoff_step + 1 >= exp_backoff.size)
+      
       return (@exp_backoff_step += 1) - 1
     end
 
