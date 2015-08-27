@@ -19,6 +19,9 @@ module CCS
       (@connection_count).times do
         add_connection
       end
+      
+      XMPPConnectionMonitor.supervise
+      
       CCS.debug "Initialized connection handler for #{@sender_id}"
     end
 

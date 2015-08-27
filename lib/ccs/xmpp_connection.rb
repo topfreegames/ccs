@@ -28,8 +28,6 @@ module CCS
 
       XMPPSimple.logger = CCS.logger
       @xmpp_client = XMPPSimple::Client.new(Actor.current, @sender_id, @api_key, CCS.configuration.host, CCS.configuration.port).connect
-
-      # monitor_queue_ttl
     end
 
     def redis
@@ -66,21 +64,6 @@ module CCS
 
     def sent_counter
       @sent_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{SENT_COUNTER}"
-    end
-
-    # If a queue is live for more than the given period it should be drained
-    def monitor_queue_ttl 
-      CCS.debug "Renew queue #{id} ttl each #{CCS.configuration.queue_ttl_interval} seconds. If the queue is not on redis, drain! (ttl=#{CCS.configuration.queue_ttl})"
-      queue_ttl          = CCS.configuration.queue_ttl
-      queue_ttl_interval = CCS.configuration.queue_ttl_interval
-
-      redis.expire(id, queue_ttl)
-
-      timers.every(queue_ttl_interval) do 
-        break if @draining
-        CCS.debug("Renew queue ttl queue=#{id} ttl=#{queue_ttl}")
-        redis.expire(id, queue_ttl)
-      end 
     end
 
     def sender_loop
