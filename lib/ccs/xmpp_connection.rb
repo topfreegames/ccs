@@ -209,6 +209,7 @@ module CCS
       else
         redis.lrem(xmpp_connection_queue, -1, msg)
         redis.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
+        @semaphore.release
       end
     end
 
