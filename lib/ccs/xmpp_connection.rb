@@ -68,7 +68,7 @@ module CCS
     end
 
     def sender_loop
-      r = Redis.new(url: CCS.configuration.redis_url, driver: driver)
+      r = Redis.new(url: CCS.configuration.redis_url, driver: :celluloid)
       while @state == :connected && !@draining
         next unless @semaphore.take
         before = Time.now
