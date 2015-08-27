@@ -24,6 +24,8 @@ module CCS
       @send_messages = {}
       @semaphore = Semaphore.new(MAX_MESSAGES)
 
+      @retry_messages = []
+
       XMPPSimple.logger = CCS.logger
       @xmpp_client = XMPPSimple::Client.new(Actor.current, @sender_id, @api_key, CCS.configuration.host, CCS.configuration.port).connect
     end
@@ -64,12 +66,16 @@ module CCS
       @sent_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{SENT_COUNTER}"
     end
 
+    def retry_counter
+      @retry_counter ||= "#{@sender_id}:#{XMPP_QUEUE}:#{RETRY_COUNTER}"
+    end
+
     def sender_loop
       r = RedisHelper.connection(:celluloid)
       while @state == :connected && !@draining
+        retry_messages_sender_loop if @exponencial_backoff
+
         next unless @semaphore.take
-        
-        sleep exp_backoff[exp_backoff_step] if @exponencial_backoff
         
         before = Time.now
         CCS.debug "waiting in ccs connection in_flight=#{@send_messages.size}"
@@ -79,6 +85,24 @@ module CCS
         send_stanza(msg)
         r.incr(sent_counter)
         @send_messages[msg['message_id']] = msg_str
+      end
+    end
+
+    def retry_messages_sender_loop
+      while @state == :connected && !@draining
+        return if @retry_messages.empty?
+        next unless @semaphore.take && @send_retry_messages.empty?
+        before = Time.now
+        CCS.debug "RETRY in_flight=#{@send_messages.size}"
+        sleep_step = exp_backoff_step
+        sleep exp_backoff[sleep_step]
+        msg_str = r.blpush(xmpp_connection_queue, @retry_messages.shift)
+        CCS.debug "RETRY slept=#{sleep_step}s"
+        msg = MultiJson.load(msg_str)
+        send_stanza(msg)
+        r.incr(retry_counter)
+        @send_messages[msg['message_id']] = msg_str
+        @send_retry_messages[msg['message_id']] = msg_str
       end
     end
 
@@ -112,6 +136,7 @@ module CCS
     def reset
       CCS.debug("Reseting #{id}")
       @send_messages = {}
+      @send_retry_messages = {}
       @semaphore = Semaphore.new(MAX_MESSAGES)
 
       redis.merge_and_delete(xmpp_connection_queue, xmpp_queue)
@@ -179,7 +204,7 @@ module CCS
     def wait_responses(limit_s=CCS.configuration.drain_timeout)
       CCS.debug "Wait #{limit_s} seconds until releasing #{@handler} (waiting for #{@send_messages.size} messages)"
       every(1) do
-        if limit_s <= 0 || @send_messages.empty?
+        if limit_s <= 0 || (@send_messages.empty? && @send_retry_messages.empty?)
           return
         else
           limit_s -= 1
@@ -208,6 +233,7 @@ module CCS
 
     def handle_ack(content)
       msg = @send_messages.delete(content['message_id'])
+      @send_retry_messages.delete(content['message_id'])
       CCS.debug("ACK content=#{content} msg=#{msg}")
       if msg.nil?
         CCS.info("Received ack for unknown message: #{content['message_id']}")
@@ -222,13 +248,14 @@ module CCS
 
     def handle_nack(content)
       msg = @send_messages.delete(content['message_id'])
+      @send_retry_messages.delete(content['message_id'])
       CCS.debug("NACK content=#{content} msg=#{msg}")
       if msg.nil?
         CCS.info("Received nack for unknown message: #{content['message_id']}")
       else
         redis.lrem(xmpp_connection_queue, -1, msg)
         
-        if(!handle_backoff(msg))
+        if(!handle_backoff(content, msg))
           redis.rpush(error_queue, MultiJson.dump("message" => msg,  "error" => content['error']))
         end
 
@@ -248,15 +275,17 @@ module CCS
       end
     end
 
-    def handle_backoff(msg)
-      case msg['error']
+    def handle_backoff(content, msg)
+      case content['error']
       when 'SERVICE_UNAVAILABLE'
         CCS.info("Received: SERVICE_UNAVAILABLE. Starting exponencialbackoff")
         @exponencial_backoff = true
+        @retry_messages << msg
         return true
       when 'INTERNAL_SERVER_ERROR'
         CCS.info("Received: INTERNAL_SERVER_ERROR. Starting exponencialbackoff")
         @exponencial_backoff = true
+        @retry_messages << msg
         return true
       else
         return false
