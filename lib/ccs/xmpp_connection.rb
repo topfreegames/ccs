@@ -21,7 +21,9 @@ module CCS
 
       Actor[xmpp_connection_queue] = Actor.current
 
-      reset
+      @send_messages = {}
+      @semaphore = Semaphore.new(MAX_MESSAGES)
+
       XMPPSimple.logger = CCS.logger
       @xmpp_client = XMPPSimple::Client.new(Actor.current, @sender_id, @api_key, CCS.configuration.host, CCS.configuration.port).connect
 
