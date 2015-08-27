@@ -1,3 +1,5 @@
+require 'timers'
+
 module CCS
   class XMPPConnectionMonitor
     include Celluloid 
