@@ -13,6 +13,7 @@ require 'ccs/user_notification'
 require 'ccs/semaphore'
 require 'ccs/callback_handler'
 require 'ccs/xmpp_connection_handler'
+require 'ccs/xmpp_connection_monitor'
 require 'ccs/xmpp_connection'
 require 'ccs/http_worker'
 
