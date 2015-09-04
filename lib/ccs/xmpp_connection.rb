@@ -51,7 +51,7 @@ module CCS
     end
 
     def xmpp_connection_queue
-      @xmpp_connection_queue ||= "#{@sender_id}:#{XMPP_QUEUE}:#{@id}"
+      @xmpp_connection_queue ||= "#{@sender_id}:#{XMPP_QUEUE}:#{id}"
     end
 
     def ack_counter

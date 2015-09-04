@@ -22,7 +22,7 @@ module CCS
 
       every(queue_ttl_interval) do 
         (1..1000).each do |i|
-          CCS.debug("Renew queue ttl queue=#{id} ttl=#{queue_ttl}")
+          CCS.debug("Renew queue ttl queue=#{i} ttl=#{queue_ttl}")
           redis.expire(xmpp_connection_queue(i), queue_ttl)
         end
       end 
